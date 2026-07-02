@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Answer Script — Essay Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=Caveat:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <div class="login-card">
+    <p class="eyebrow">BRAC &amp; NSU · Essay Practice</p>
+    <h1>Answer Script</h1>
+    <p class="sub">Sign in to write today's answer.</p>
+    <form id="login-form">
+      <label>Username
+        <input type="text" id="login-username" autocomplete="username" required>
+      </label>
+      <label>Password
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </label>
+      <button type="submit">Enter the hall</button>
+      <p class="error" id="login-error"></p>
+    </form>
+  </div>
+</div>
+
+<div id="app-screen" class="screen" style="display:none;">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">§</span>
+      <div>
+        <p class="eyebrow">BRAC &amp; NSU · Essay Practice</p>
+        <h1>Answer Script</h1>
+      </div>
+    </div>
+    <div class="who">
+      <span id="who-name"></span>
+      <span id="admin-badge" class="admin-badge" style="display:none;">Admin</span>
+      <button id="logout-btn" class="ghost-btn">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="write">Write today's answer</button>
+    <button class="tab" data-tab="board">Marked Scripts</button>
+    <button class="tab" data-tab="overall">Overall standing</button>
+  </nav>
+
+  <main>
+    <!-- WRITE TAB -->
+    <section id="tab-write" class="tab-panel active">
+      <div class="panel question-panel">
+        <div class="panel-head">
+          <p class="eyebrow">Today's question</p>
+          <div>
+            <button id="set-question-btn" class="link-btn">Set / change question</button>
+            <button id="delete-question-btn" class="link-btn" style="color:var(--red-pen); margin-left:14px;">Delete question &amp; all answers</button>
+          </div>
+        </div>
+        <p id="current-question" class="question-text">No question has been set yet.</p>
+
+        <div id="question-form" class="question-form" style="display:none;">
+          <textarea id="question-input" placeholder="Paste or type today's essay question here..."></textarea>
+          <div class="form-actions">
+            <button id="save-question-btn">Save question for everyone</button>
+            <button id="cancel-question-btn" class="ghost-btn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel essay-panel">
+        <p class="eyebrow">Your answer</p>
+        <textarea id="essay-input" placeholder="Write your essay here..."></textarea>
+        <div class="form-actions">
+          <button id="submit-essay-btn">Submit for grading</button>
+          <span id="submit-status" class="status-text"></span>
+        </div>
+        <div id="own-feedback"></div>
+      </div>
+    </section>
+
+    <!-- MARKED SCRIPTS TAB (saved essays, today + yesterday) -->
+    <section id="tab-board" class="tab-panel">
+      <p class="eyebrow">Every submitted essay, with the AI's marking — kept for today and yesterday</p>
+      <div id="archive-container"></div>
+    </section>
+
+    <!-- OVERALL TAB -->
+    <section id="tab-overall" class="tab-panel">
+      <p class="eyebrow">Running average across every essay</p>
+      <table class="overall-table">
+        <thead><tr><th>Rank</th><th>Name</th><th>Essays</th><th>Total</th><th>Average /40</th></tr></thead>
+        <tbody id="overall-body"></tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
