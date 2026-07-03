@@ -374,6 +374,110 @@ textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
 .fb-section.strengths h4 { color: var(--green-ok); }
 .fb-section.mistakes h4 { color: var(--red-pen); }
 
+.band-tag {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ---------- Rubric breakdown ---------- */
+.rubric-row { margin-bottom: 12px; }
+.rubric-row:last-child { margin-bottom: 0; }
+.rubric-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.rubric-label { font-weight: 600; color: var(--ink); }
+.rubric-score { font-family: var(--mono); color: var(--ink-soft); }
+.rubric-score small { font-size: 10px; }
+.rubric-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.rubric-bar-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+}
+.rubric-notes {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* ---------- Statistics ---------- */
+.stat-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.stat-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  background: rgba(91,83,76,0.08);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+/* ---------- Checklist ---------- */
+.check-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.check-item {
+  font-size: 12px;
+  font-family: var(--mono);
+  border-radius: 4px;
+  padding: 4px 9px;
+  border: 1px solid var(--rule);
+}
+.check-item.yes { color: var(--green-ok); border-color: var(--green-ok); background: rgba(63,107,75,0.08); }
+.check-item.no { color: var(--ink-soft); }
+
+/* ---------- Examiner comment ---------- */
+.examiner-text {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--gold);
+}
+
+/* ---------- Grammar analysis ---------- */
+.mistake-item {
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--red-pen);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+.mistake-item:last-child { margin-bottom: 0; }
+.mistake-item.sev-minor { border-left-color: var(--gold); }
+.mistake-item.sev-moderate { border-left-color: var(--red-pen); }
+.mistake-item.sev-major { border-left-color: #7a1f16; }
+.sev-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.mistake-original {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13.5px;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.mistake-issue { font-size: 13px; margin: 0 0 4px; color: var(--ink-soft); }
+.mistake-improved { font-size: 13px; margin: 0; color: var(--green-ok); }
+.no-mistakes { font-size: 13.5px; color: var(--ink-soft); font-style: italic; margin: 0; }
+
 .word-chip {
   display: inline-block;
   background: rgba(169,120,47,0.12);
