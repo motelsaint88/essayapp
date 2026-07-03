@@ -113,6 +113,7 @@ $('#save-question-btn').addEventListener('click', async () => {
     $('#question-form').style.display = 'none';
     $('#own-feedback').innerHTML = '';
     $('#essay-input').value = '';
+    updateWritingAssistant();
     await loadQuestion();
     await loadArchive();
   } catch (err) {
@@ -126,6 +127,7 @@ $('#delete-question-btn').addEventListener('click', async () => {
   try {
     await api(`/api/question/${currentQuestion.id}`, { method: 'DELETE' });
     $('#essay-input').value = '';
+    updateWritingAssistant();
     $('#own-feedback').innerHTML = '';
     await loadQuestion();
     await loadArchive();
@@ -136,6 +138,32 @@ $('#delete-question-btn').addEventListener('click', async () => {
 });
 
 // ---------- Essay submit ----------
+const TARGET_MIN_WORDS = 220;
+const TARGET_MAX_WORDS = 280;
+
+function updateWritingAssistant() {
+  const text = $('#essay-input').value.trim();
+  const words = text ? text.split(/\s+/).filter(Boolean) : [];
+  const wordCount = words.length;
+  const paragraphCount = text ? text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).length : 0;
+  const readingMin = Math.max(0, Math.round((wordCount / 200) * 10) / 10);
+
+  $('#live-word-count').textContent = wordCount;
+  $('#live-reading-time').textContent = readingMin;
+  $('#live-paragraphs').textContent = paragraphCount;
+
+  let pct;
+  if (wordCount === 0) pct = 0;
+  else if (wordCount < TARGET_MIN_WORDS) pct = Math.round((wordCount / TARGET_MIN_WORDS) * 100);
+  else if (wordCount > TARGET_MAX_WORDS) pct = 100;
+  else pct = 100;
+
+  $('#progress-ring').style.setProperty('--pct', pct);
+  $('#progress-pct').textContent = pct + '%';
+}
+
+$('#essay-input').addEventListener('input', updateWritingAssistant);
+
 $('#submit-essay-btn').addEventListener('click', async () => {
   const text = $('#essay-input').value.trim();
   const statusEl = $('#submit-status');
@@ -153,10 +181,10 @@ $('#submit-essay-btn').addEventListener('click', async () => {
     });
     statusEl.textContent = 'Graded.';
     statusEl.className = 'status-text ok';
-    $('#own-feedback').innerHTML = renderScriptCard({
+    $('#own-feedback').innerHTML = `<div class="script-card" style="margin-top:20px;">${renderScriptCard({
       name: 'Your result', status: 'graded', score: result.score,
       feedback: result, essay: text
-    }, false);
+    }, false)}</div>`;
     loadArchive();
     loadOverall();
   } catch (err) {
@@ -241,14 +269,18 @@ const CHECKLIST_LABELS = {
   strong_ending: 'Strong ending'
 };
 
+function bandClass(band) {
+  return 'b-' + String(band || '').toLowerCase().replace(/\s+/g, '-');
+}
+
 function renderScriptCard(entry, showAdminDelete) {
   const fb = entry.feedback || {};
-  const band = fb.band || '';
+  const band = fb.band || '—';
   const rubric = fb.rubric || {};
   const checklist = fb.checklist || {};
   const stats = fb.statistics || {};
   const mistakes = fb.mistakes || [];
-  const words = (fb.uncommon_words || []).map(w => `<span class="word-chip"><b>${escapeHtml(w.word)}</b> — ${escapeHtml(w.meaning)}</span>`).join('');
+  const words = fb.uncommon_words || [];
 
   const essayHtml = entry.essay ? `
     <details class="essay-reveal">
@@ -257,90 +289,111 @@ function renderScriptCard(entry, showAdminDelete) {
     </details>` : '';
 
   const rubricHtml = Object.keys(RUBRIC_LABELS).map(key => {
-    const r = rubric[key] || { score: 0, notes: '' };
+    const r = rubric[key] || { score: 0 };
     const pct = Math.round((r.score / 10) * 100);
     return `
       <div class="rubric-row">
         <div class="rubric-row-top">
           <span class="rubric-label">${RUBRIC_LABELS[key]}</span>
-          <span class="rubric-score">${r.score}<small>/10</small></span>
+          <span class="rubric-score">${r.score} / 10</span>
         </div>
         <div class="rubric-bar"><div class="rubric-bar-fill" style="width:${pct}%"></div></div>
-        ${r.notes ? `<p class="rubric-notes">${escapeHtml(r.notes)}</p>` : ''}
       </div>`;
   }).join('');
 
   const checklistHtml = Object.keys(CHECKLIST_LABELS).map(key => `
-    <span class="check-item ${checklist[key] ? 'yes' : 'no'}">${checklist[key] ? '✓' : '✕'} ${CHECKLIST_LABELS[key]}</span>
+    <span class="check-item ${checklist[key] ? 'yes' : ''}">${checklist[key] ? '✓' : '·'} ${CHECKLIST_LABELS[key]}</span>
   `).join('');
 
+  const readingMin = Math.max(1, Math.round((stats.reading_time_seconds || 0) / 60));
   const statsHtml = `
-    <span class="stat-chip">${stats.word_count ?? '—'} words</span>
-    <span class="stat-chip">${stats.paragraph_count ?? '—'} paragraphs</span>
-    <span class="stat-chip">${stats.sentence_count ?? '—'} sentences</span>
-    <span class="stat-chip">avg ${stats.avg_sentence_length ?? '—'} words/sentence</span>
-    <span class="stat-chip">~${Math.max(1, Math.round((stats.reading_time_seconds || 0) / 60)) || '<1'} min read</span>
+    <div class="stat-list-row"><span>Word Count</span><span>${stats.word_count ?? '—'}</span></div>
+    <div class="stat-list-row"><span>Paragraphs</span><span>${stats.paragraph_count ?? '—'}</span></div>
+    <div class="stat-list-row"><span>Sentences</span><span>${stats.sentence_count ?? '—'}</span></div>
+    <div class="stat-list-row"><span>Avg. Sentence Length</span><span>${stats.avg_sentence_length ?? '—'}</span></div>
+    <div class="stat-list-row"><span>Reading Time</span><span>${readingMin} min</span></div>
   `;
 
   const mistakesHtml = mistakes.length
-    ? mistakes.map(m => `
-        <div class="mistake-item sev-${(m.severity || 'minor').toLowerCase()}">
-          <span class="sev-badge">${escapeHtml(m.severity || 'Minor')}</span>
-          ${m.original ? `<p class="mistake-original">“${escapeHtml(m.original)}”</p>` : ''}
-          ${m.issue ? `<p class="mistake-issue">${escapeHtml(m.issue)}</p>` : ''}
-          ${m.improved ? `<p class="mistake-improved">→ ${escapeHtml(m.improved)}</p>` : ''}
+    ? mistakes.slice(0, 4).map(m => `
+        <div class="mistake-item">
+          <span class="sev-badge sev-${(m.severity || 'minor').toLowerCase()}">${escapeHtml(m.severity || 'Minor')}</span>
+          ${m.original ? `<p class="mistake-original">"${escapeHtml(m.original)}"</p>` : ''}
+          ${m.improved ? `<p class="mistake-arrow">→ ${escapeHtml(m.improved)}</p>` : ''}
         </div>`).join('')
     : '<p class="no-mistakes">No grammar issues found.</p>';
 
+  const wordsHtml = words.length
+    ? words.map(w => `<span class="word-chip"><b>${escapeHtml(w.word)}</b> — ${escapeHtml(w.meaning)}</span>`).join('')
+    : '<p class="no-mistakes">None flagged for this essay.</p>';
+
+  const formatNoteHtml = (fb.format_notes || []).length ? `
+    <div class="r-card format-note-card">
+      <h4>Format note</h4>
+      <ul class="plain-list">${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+    </div>` : '';
+
   return `
-    <div class="score-mark">${entry.score}<small>/ 40</small></div>
-    <p class="fb-name">${entry.name || ''}</p>
-    <p class="fb-status">Graded${band ? ` · <span class="band-tag">${escapeHtml(band)}</span>` : ''}${fb.essay_type_detected ? ` · ${escapeHtml(fb.essay_type_detected)}` : ''}</p>
+    <div class="result-head">
+      <p class="fb-name">${entry.name || ''}</p>
+      <span class="fb-status">Graded${fb.essay_type_detected ? ` · ${escapeHtml(fb.essay_type_detected)}` : ''}</span>
+    </div>
     ${essayHtml}
 
-    <div class="fb-section rubric">
-      <h4>Rubric breakdown</h4>
-      ${rubricHtml}
+    <div class="result-wrap">
+      <div class="result-grid-top">
+        <div class="r-card score">
+          <h4>Overall Score</h4>
+          <div class="score-value">${entry.score}<small> / 40</small></div>
+          <span class="band-chip ${bandClass(band)}">${escapeHtml(band)}</span>
+        </div>
+        <div class="r-card rubric">
+          <h4>Rubric Breakdown</h4>
+          ${rubricHtml}
+        </div>
+        <div class="r-card stats">
+          <h4>Statistics</h4>
+          <div class="stat-list">${statsHtml}</div>
+        </div>
+        <div class="r-card type">
+          <h4>Essay Type Detected</h4>
+          <div class="type-value">${escapeHtml(fb.essay_type_detected || 'Unclassified')}</div>
+          <div class="type-confidence">Confidence: ${escapeHtml(fb.confidence || 'medium')}</div>
+        </div>
+      </div>
+
+      <div class="result-grid-mid">
+        <div class="r-card">
+          <h4>Handbook Checklist</h4>
+          <div class="check-grid">${checklistHtml}</div>
+        </div>
+        <div class="r-card">
+          <h4>Examiner's Comment</h4>
+          <p class="examiner-text">${escapeHtml(fb.examiner_comment || 'No comment generated.')}</p>
+        </div>
+      </div>
+
+      <div class="result-grid-bottom">
+        <div class="r-card strengths">
+          <h4>Strengths</h4>
+          <ul class="plain-list">${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+        <div class="r-card improve">
+          <h4>Areas to Improve</h4>
+          <ul class="plain-list">${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+        <div class="r-card grammar">
+          <h4>Top Grammar Issues</h4>
+          ${mistakesHtml}
+        </div>
+        <div class="r-card words">
+          <h4>Advanced Words Used</h4>
+          ${wordsHtml}
+        </div>
+      </div>
+      ${formatNoteHtml}
     </div>
 
-    <div class="fb-section stats">
-      <h4>Statistics</h4>
-      <div class="stat-row">${statsHtml}</div>
-    </div>
-
-    <div class="fb-section checklist">
-      <h4>Handbook checklist</h4>
-      <div class="check-grid">${checklistHtml}</div>
-    </div>
-
-    ${fb.examiner_comment ? `
-    <div class="fb-section examiner">
-      <h4>Examiner's comment</h4>
-      <p class="examiner-text">${escapeHtml(fb.examiner_comment)}</p>
-    </div>` : ''}
-
-    ${(fb.format_notes || []).length ? `
-    <div class="fb-section format-notes">
-      <h4>Format note</h4>
-      <ul>${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
-    </div>` : ''}
-
-    <div class="fb-section strengths">
-      <h4>What's good</h4>
-      <ul>${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-    </div>
-
-    <div class="fb-section mistakes">
-      <h4>Grammar analysis</h4>
-      ${mistakesHtml}
-    </div>
-
-    <div class="fb-section improvements">
-      <h4>Needs improvement</h4>
-      <ul>${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-    </div>
-
-    ${words ? `<div class="fb-section words"><h4>Advanced words used</h4>${words}</div>` : ''}
     ${showAdminDelete ? `<button class="admin-delete-btn">Delete this essay</button>` : ''}
   `;
 }
