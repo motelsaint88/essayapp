@@ -299,49 +299,56 @@ function renderScriptCard(entry, showAdminDelete) {
     <p class="fb-status">Graded${band ? ` · <span class="band-tag">${escapeHtml(band)}</span>` : ''}${fb.essay_type_detected ? ` · ${escapeHtml(fb.essay_type_detected)}` : ''}</p>
     ${essayHtml}
 
-    <div class="fb-section rubric">
-      <h4>Rubric breakdown</h4>
-      ${rubricHtml}
-    </div>
+    <details class="essay-reveal">
+      <summary>View full marking breakdown</summary>
+      <div class="feedback-details">
 
-    <div class="fb-section stats">
-      <h4>Statistics</h4>
-      <div class="stat-row">${statsHtml}</div>
-    </div>
+        <div class="fb-section rubric">
+          <h4>Rubric breakdown</h4>
+          ${rubricHtml}
+        </div>
 
-    <div class="fb-section checklist">
-      <h4>Handbook checklist</h4>
-      <div class="check-grid">${checklistHtml}</div>
-    </div>
+        <div class="fb-section stats">
+          <h4>Statistics</h4>
+          <div class="stat-row">${statsHtml}</div>
+        </div>
 
-    ${fb.examiner_comment ? `
-    <div class="fb-section examiner">
-      <h4>Examiner's comment</h4>
-      <p class="examiner-text">${escapeHtml(fb.examiner_comment)}</p>
-    </div>` : ''}
+        <div class="fb-section checklist">
+          <h4>Handbook checklist</h4>
+          <div class="check-grid">${checklistHtml}</div>
+        </div>
 
-    ${(fb.format_notes || []).length ? `
-    <div class="fb-section format-notes">
-      <h4>Format note</h4>
-      <ul>${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
-    </div>` : ''}
+        ${fb.examiner_comment ? `
+        <div class="fb-section examiner">
+          <h4>Examiner's comment</h4>
+          <p class="examiner-text">${escapeHtml(fb.examiner_comment)}</p>
+        </div>` : ''}
 
-    <div class="fb-section strengths">
-      <h4>What's good</h4>
-      <ul>${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-    </div>
+        ${(fb.format_notes || []).length ? `
+        <div class="fb-section format-notes">
+          <h4>Format note</h4>
+          <ul>${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+        </div>` : ''}
 
-    <div class="fb-section mistakes">
-      <h4>Grammar analysis</h4>
-      ${mistakesHtml}
-    </div>
+        <div class="fb-section strengths">
+          <h4>What's good</h4>
+          <ul>${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
 
-    <div class="fb-section improvements">
-      <h4>Needs improvement</h4>
-      <ul>${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-    </div>
+        <div class="fb-section mistakes">
+          <h4>Grammar analysis</h4>
+          ${mistakesHtml}
+        </div>
 
-    ${words ? `<div class="fb-section words"><h4>Advanced words used</h4>${words}</div>` : ''}
+        <div class="fb-section improvements">
+          <h4>Needs improvement</h4>
+          <ul>${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+
+        ${words ? `<div class="fb-section words"><h4>Advanced words used</h4>${words}</div>` : ''}
+      </div>
+    </details>
+
     ${showAdminDelete ? `<button class="admin-delete-btn">Delete this essay</button>` : ''}
   `;
 }

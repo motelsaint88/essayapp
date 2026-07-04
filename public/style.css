@@ -361,6 +361,12 @@ textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
   white-space: pre-wrap;
 }
 
+.feedback-details {
+  padding: 6px 14px 14px;
+  border-top: 1px solid var(--rule);
+}
+.feedback-details .fb-section:first-child { margin-top: 6px; }
+
 .fb-section { margin-top: 14px; }
 .fb-section h4 {
   font-size: 11px;
@@ -547,8 +553,20 @@ textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
 .admin-delete-btn:hover { background: var(--red-pen); color: #fff; }
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .board-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .board-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .not-submitted {
