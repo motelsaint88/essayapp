@@ -48,6 +48,21 @@ async function init() {
       UNIQUE(question_id, username)
     )
   `);
+
+  // Permanent score record, kept forever — NOT affected by the 2-question
+  // prune. "Overall standing" reads from this table instead of `essays`, so
+  // a user's average keeps counting every essay they've ever been graded
+  // on, even after the essay text itself has been deleted to save space.
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS score_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL,
+      username TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      graded_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(question_id, username)
+    )
+  `);
 }
 
 async function get(sql, args = []) {

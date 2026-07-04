@@ -133,6 +133,12 @@ app.post('/api/essay', requireAuth, h(async (req, res) => {
       UPDATE essays SET score = ?, feedback = ?, status = 'graded'
       WHERE question_id = ? AND username = ?
     `, [result.score, JSON.stringify(result), q.id, username]);
+    await run(`
+      INSERT INTO score_history (question_id, username, score)
+      VALUES (?, ?, ?)
+      ON CONFLICT(question_id, username) DO UPDATE SET
+        score = excluded.score, graded_at = datetime('now')
+    `, [q.id, username, result.score]);
 
     res.json({ ok: true, questionId: q.id, ...result });
   } catch (err) {
@@ -153,6 +159,12 @@ app.post('/api/essay/regrade', requireAuth, h(async (req, res) => {
     const result = await gradeEssay(q.text, row.essay_text);
     await run(`UPDATE essays SET score = ?, feedback = ?, status = 'graded' WHERE id = ?`,
       [result.score, JSON.stringify(result), row.id]);
+    await run(`
+      INSERT INTO score_history (question_id, username, score)
+      VALUES (?, ?, ?)
+      ON CONFLICT(question_id, username) DO UPDATE SET
+        score = excluded.score, graded_at = datetime('now')
+    `, [q.id, username, result.score]);
     res.json({ ok: true, questionId: q.id, ...result });
   } catch (err) {
     await run(`UPDATE essays SET status = 'error' WHERE id = ?`, [row.id]);
@@ -207,7 +219,7 @@ app.get('/api/archive', requireAuth, h(async (req, res) => {
 app.get('/api/overall', requireAuth, h(async (req, res) => {
   const rows = await all(`
     SELECT username, COUNT(*) as essays, SUM(score) as total, AVG(score) as avg
-    FROM essays WHERE status = 'graded' GROUP BY username
+    FROM score_history GROUP BY username
   `);
   const byUser = Object.fromEntries(rows.map(r => [r.username, r]));
 
