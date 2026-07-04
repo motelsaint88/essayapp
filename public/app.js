@@ -205,6 +205,7 @@ async function loadArchive() {
         card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading failed — they need to resubmit.</p>` +
           (entry.essay ? `<details class="essay-reveal"><summary>Read the essay</summary><p class="essay-text">${escapeHtml(entry.essay)}</p></details>` : '');
       } else {
+        card.className = 'script-card';
         card.innerHTML = renderScriptCard(entry, meIsAdmin);
         if (meIsAdmin) {
           card.querySelector('.admin-delete-btn').addEventListener('click', async () => {
