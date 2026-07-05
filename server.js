@@ -226,6 +226,34 @@ app.get('/api/archive', requireAuth, h(async (req, res) => {
   res.json({ archive });
 }));
 
+// Full history for ONE user — every essay they've ever submitted, across
+// every day, most recent first. Powers the "Archive" button on each card.
+app.get('/api/archive/user/:username', requireAuth, h(async (req, res) => {
+  const { username } = req.params;
+  if (!USERNAMES.includes(username)) return res.status(404).json({ error: 'No such user' });
+
+  const rows = await all(`
+    SELECT e.*, q.text AS question_text, q.created_at AS question_created_at
+    FROM essays e
+    JOIN questions q ON q.id = e.question_id
+    WHERE e.username = ?
+    ORDER BY q.id DESC
+  `, [username]);
+
+  const entries = rows.map(r => ({
+    questionId: r.question_id,
+    questionText: r.question_text,
+    questionDate: r.question_created_at,
+    status: r.status,
+    score: r.score,
+    essay: r.essay_text,
+    feedback: r.feedback ? JSON.parse(r.feedback) : null,
+    submittedAt: r.created_at
+  }));
+
+  res.json({ username, name: displayName(username), entries });
+}));
+
 app.get('/api/overall', requireAuth, h(async (req, res) => {
   const rows = await all(`
     SELECT username, COUNT(*) as essays, SUM(score) as total, AVG(score) as avg

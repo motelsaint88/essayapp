@@ -251,19 +251,22 @@ function buildDayGrid(day) {
 
   day.entries.forEach(entry => {
     const card = document.createElement('div');
+    const archiveBtnHtml = `<button class="view-archive-btn" data-username="${entry.username}" data-name="${escapeHtml(entry.name)}">View ${escapeHtml(entry.name)}'s archive</button>`;
+
     if (entry.status === 'not_submitted') {
       card.className = 'script-card';
-      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Hasn't submitted yet.</p>`;
+      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Hasn't submitted yet.</p>${archiveBtnHtml}`;
     } else if (entry.status === 'pending') {
       card.className = 'script-card';
-      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading in progress...</p>`;
+      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading in progress...</p>${archiveBtnHtml}`;
     } else if (entry.status === 'error') {
       card.className = 'script-card';
       card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading failed — they need to resubmit.</p>` +
-        (entry.essay ? `<details class="essay-reveal"><summary>Read the essay</summary><p class="essay-text">${escapeHtml(entry.essay)}</p></details>` : '');
+        (entry.essay ? `<details class="essay-reveal"><summary>Read the essay</summary><p class="essay-text">${escapeHtml(entry.essay)}</p></details>` : '') +
+        archiveBtnHtml;
     } else {
       card.className = 'script-card';
-      card.innerHTML = renderScriptCard(entry, meIsAdmin);
+      card.innerHTML = renderScriptCard(entry, meIsAdmin) + archiveBtnHtml;
       if (meIsAdmin) {
         card.querySelector('.admin-delete-btn').addEventListener('click', async () => {
           if (!confirm(`Delete ${entry.name}'s essay and grade for this question?`)) return;
@@ -273,6 +276,7 @@ function buildDayGrid(day) {
         });
       }
     }
+    card.querySelector('.view-archive-btn').addEventListener('click', () => openUserArchive(entry.username, entry.name));
     grid.appendChild(card);
   });
 
@@ -415,6 +419,44 @@ async function loadOverall() {
     </tr>
   `).join('');
 }
+
+// ---------- Per-person archive modal ----------
+async function openUserArchive(username, name) {
+  const modal = $('#user-archive-modal');
+  const body = $('#user-archive-body');
+  $('#user-archive-title').textContent = `${name}'s archive`;
+  body.innerHTML = '<p class="no-archive">Loading...</p>';
+  modal.style.display = 'flex';
+
+  try {
+    const data = await api(`/api/archive/user/${username}`);
+    if (!data.entries.length) {
+      body.innerHTML = '<p class="no-archive">No essays submitted yet.</p>';
+      return;
+    }
+    body.innerHTML = data.entries.map(entry => {
+      const dateStr = new Date(entry.questionDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const qSnippet = `<p class="question-text small">${escapeHtml(entry.questionText)}</p>`;
+
+      if (entry.status === 'pending') {
+        return `<div class="script-card user-archive-entry"><p class="fb-status">${dateStr}</p>${qSnippet}<p class="not-submitted">Grading in progress...</p></div>`;
+      }
+      if (entry.status === 'error') {
+        return `<div class="script-card user-archive-entry"><p class="fb-status">${dateStr}</p>${qSnippet}<p class="not-submitted">Grading failed.</p></div>`;
+      }
+      return `<div class="script-card user-archive-entry"><p class="fb-status" style="margin-bottom:8px;">${dateStr}</p>${qSnippet}${renderScriptCard({ ...entry, name: '' }, false)}</div>`;
+    }).join('');
+  } catch (err) {
+    body.innerHTML = `<p class="no-archive">Failed to load: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+$('#close-user-archive').addEventListener('click', () => {
+  $('#user-archive-modal').style.display = 'none';
+});
+$('#user-archive-modal').addEventListener('click', e => {
+  if (e.target.id === 'user-archive-modal') $('#user-archive-modal').style.display = 'none';
+});
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
