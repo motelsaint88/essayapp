@@ -17,7 +17,9 @@ const USERS = [
 ];
 const USERNAMES = USERS.map(u => u.username);
 const ADMIN_USERNAME = 'farhan'; // only this account can set questions and delete essays
-const MAX_QUESTIONS_KEPT = 2; // today + yesterday only
+// (No MAX_QUESTIONS_KEPT / auto-pruning anymore — every question and essay
+// is kept forever. Farhan can manually delete any specific day or essay
+// from the Marked Scripts archive whenever he wants.)
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -44,15 +46,10 @@ function displayName(username) {
   return u ? u.name : username;
 }
 
-// keeps only the most recent MAX_QUESTIONS_KEPT questions (and their essays)
-async function pruneOldQuestions() {
-  const keep = await all('SELECT id FROM questions ORDER BY id DESC LIMIT ?', [MAX_QUESTIONS_KEPT]);
-  const keepIds = keep.map(r => r.id);
-  if (keepIds.length === 0) return;
-  const placeholders = keepIds.map(() => '?').join(',');
-  await run(`DELETE FROM essays WHERE question_id NOT IN (${placeholders})`, keepIds);
-  await run(`DELETE FROM questions WHERE id NOT IN (${placeholders})`, keepIds);
-}
+// (pruneOldQuestions removed — history is no longer auto-deleted.
+// Farhan can delete any specific day via DELETE /api/question/:id, or any
+// specific essay via DELETE /api/essay/:questionId/:username, whenever he
+// chooses to.)
 
 // wraps an async route handler so thrown errors become a 500 instead of hanging
 function h(fn) {
@@ -96,8 +93,21 @@ app.post('/api/question', requireAdmin, h(async (req, res) => {
 
   await run('UPDATE questions SET is_active = 0 WHERE is_active = 1');
   const info = await run('INSERT INTO questions (text, created_by) VALUES (?, ?)', [text.trim(), req.session.username]);
-  await pruneOldQuestions();
   const q = await get('SELECT * FROM questions WHERE id = ?', [info.lastInsertRowid]);
+  res.json({ question: q });
+}));
+
+// Edit the CURRENT active question's text in place — no new row, no
+// archiving, no pruning. Use this to fix a typo or reword today's question
+// without demoting it to "yesterday" and without touching anyone's essays.
+app.put('/api/question/:id', requireAdmin, h(async (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Question text is required' });
+
+  const info = await run('UPDATE questions SET text = ? WHERE id = ? AND is_active = 1', [text.trim(), id]);
+  if (info.changes === 0) return res.status(404).json({ error: 'Active question not found' });
+  const q = await get('SELECT * FROM questions WHERE id = ?', [id]);
   res.json({ question: q });
 }));
 
@@ -189,7 +199,7 @@ app.delete('/api/question/:questionId', requireAdmin, h(async (req, res) => {
 
 // ---------- Saved essays (today + yesterday, admin can delete) ----------
 app.get('/api/archive', requireAuth, h(async (req, res) => {
-  const questions = await all('SELECT * FROM questions ORDER BY id DESC LIMIT ?', [MAX_QUESTIONS_KEPT]);
+  const questions = await all('SELECT * FROM questions ORDER BY id DESC');
 
   const archive = [];
   for (const q of questions) {
@@ -232,7 +242,7 @@ app.get('/api/overall', requireAuth, h(async (req, res) => {
       total: r ? r.total : 0,
       avg: r ? Math.round(r.avg * 10) / 10 : 0
     };
-  }).sort((a, b) => b.avg - a.avg);
+  }).sort((a, b) => b.total - a.total || b.avg - a.avg);
 
   res.json({ overall });
 }));

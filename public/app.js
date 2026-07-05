@@ -98,11 +98,28 @@ $('#set-question-btn').addEventListener('click', () => {
   if (!meIsAdmin) return;
   $('#question-form').style.display = 'block';
   $('#question-input').value = currentQuestion ? currentQuestion.text : '';
+  $('#update-question-btn').style.display = currentQuestion ? 'inline-block' : 'none';
+  $('#save-question-btn').textContent = currentQuestion
+    ? 'Start a new question (archives this one)'
+    : 'Save question for everyone';
   $('#question-input').focus();
 });
 
 $('#cancel-question-btn').addEventListener('click', () => {
   $('#question-form').style.display = 'none';
+});
+
+$('#update-question-btn').addEventListener('click', async () => {
+  const text = $('#question-input').value.trim();
+  if (!text || !currentQuestion) return;
+  try {
+    await api(`/api/question/${currentQuestion.id}`, { method: 'PUT', body: JSON.stringify({ text }) });
+    $('#question-form').style.display = 'none';
+    await loadQuestion();
+    await loadArchive();
+  } catch (err) {
+    alert(err.message);
+  }
 });
 
 $('#save-question-btn').addEventListener('click', async () => {
@@ -167,7 +184,13 @@ $('#submit-essay-btn').addEventListener('click', async () => {
   }
 });
 
-// ---------- Marked Scripts (saved essays, today + yesterday) ----------
+function dayLabel(i, createdAt) {
+  if (i === 0) return 'Today';
+  if (i === 1) return 'Yesterday';
+  if (i === 2) return 'Day before yesterday';
+  return new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 async function loadArchive() {
   const { archive } = await api('/api/archive');
   const container = $('#archive-container');
@@ -182,46 +205,78 @@ async function loadArchive() {
     const section = document.createElement('section');
     section.className = 'archive-day';
 
-    const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : new Date(day.question.created_at).toLocaleDateString();
+    const label = dayLabel(i, day.question.created_at);
 
     const head = document.createElement('div');
     head.className = 'archive-day-head';
-    head.innerHTML = `<span class="day-stamp">${label}</span><p class="question-text small">${escapeHtml(day.question.text)}</p>`;
+    head.innerHTML = `
+      <span class="day-stamp">${label}</span>
+      <p class="question-text small">${escapeHtml(day.question.text)}</p>
+      ${meIsAdmin ? `<button class="admin-delete-btn delete-day-btn">Delete this day</button>` : ''}
+    `;
     section.appendChild(head);
 
-    const grid = document.createElement('div');
-    grid.className = 'board-grid';
+    if (meIsAdmin) {
+      head.querySelector('.delete-day-btn').addEventListener('click', async () => {
+        if (!confirm(`Delete "${label}" entirely — the question and everyone's essays/grades for it? This cannot be undone. (Overall standing scores are unaffected.)`)) return;
+        await api(`/api/question/${day.question.id}`, { method: 'DELETE' });
+        await loadArchive();
+        await loadQuestion();
+      });
+    }
 
-    day.entries.forEach(entry => {
-      const card = document.createElement('div');
-      if (entry.status === 'not_submitted') {
-        card.className = 'script-card';
-        card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Hasn't submitted yet.</p>`;
-      } else if (entry.status === 'pending') {
-        card.className = 'script-card';
-        card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading in progress...</p>`;
-      } else if (entry.status === 'error') {
-        card.className = 'script-card';
-        card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading failed — they need to resubmit.</p>` +
-          (entry.essay ? `<details class="essay-reveal"><summary>Read the essay</summary><p class="essay-text">${escapeHtml(entry.essay)}</p></details>` : '');
-      } else {
-        card.className = 'script-card';
-        card.innerHTML = renderScriptCard(entry, meIsAdmin);
-        if (meIsAdmin) {
-          card.querySelector('.admin-delete-btn').addEventListener('click', async () => {
-            if (!confirm(`Delete ${entry.name}'s essay and grade for this question?`)) return;
-            await api(`/api/essay/${day.question.id}/${entry.username}`, { method: 'DELETE' });
-            loadArchive();
-            loadOverall();
-          });
-        }
-      }
-      grid.appendChild(card);
-    });
+    const grid = buildDayGrid(day);
 
-    section.appendChild(grid);
+    if (i === 0) {
+      // Today: always expanded
+      section.appendChild(grid);
+    } else {
+      // Past days: collapsed by default, click to view
+      const details = document.createElement('details');
+      details.className = 'essay-reveal day-details';
+      const summary = document.createElement('summary');
+      summary.textContent = `View this day's essays`;
+      details.appendChild(summary);
+      details.appendChild(grid);
+      section.appendChild(details);
+    }
+
     container.appendChild(section);
   });
+}
+
+function buildDayGrid(day) {
+  const grid = document.createElement('div');
+  grid.className = 'board-grid';
+
+  day.entries.forEach(entry => {
+    const card = document.createElement('div');
+    if (entry.status === 'not_submitted') {
+      card.className = 'script-card';
+      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Hasn't submitted yet.</p>`;
+    } else if (entry.status === 'pending') {
+      card.className = 'script-card';
+      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading in progress...</p>`;
+    } else if (entry.status === 'error') {
+      card.className = 'script-card';
+      card.innerHTML = `<p class="fb-name">${entry.name}</p><p class="not-submitted">Grading failed — they need to resubmit.</p>` +
+        (entry.essay ? `<details class="essay-reveal"><summary>Read the essay</summary><p class="essay-text">${escapeHtml(entry.essay)}</p></details>` : '');
+    } else {
+      card.className = 'script-card';
+      card.innerHTML = renderScriptCard(entry, meIsAdmin);
+      if (meIsAdmin) {
+        card.querySelector('.admin-delete-btn').addEventListener('click', async () => {
+          if (!confirm(`Delete ${entry.name}'s essay and grade for this question?`)) return;
+          await api(`/api/essay/${day.question.id}/${entry.username}`, { method: 'DELETE' });
+          loadArchive();
+          loadOverall();
+        });
+      }
+    }
+    grid.appendChild(card);
+  });
+
+  return grid;
 }
 
 const RUBRIC_LABELS = {
@@ -299,56 +354,49 @@ function renderScriptCard(entry, showAdminDelete) {
     <p class="fb-status">Graded${band ? ` · <span class="band-tag">${escapeHtml(band)}</span>` : ''}${fb.essay_type_detected ? ` · ${escapeHtml(fb.essay_type_detected)}` : ''}</p>
     ${essayHtml}
 
-    <details class="essay-reveal">
-      <summary>View full marking breakdown</summary>
-      <div class="feedback-details">
+    <div class="fb-section rubric">
+      <h4>Rubric breakdown</h4>
+      ${rubricHtml}
+    </div>
 
-        <div class="fb-section rubric">
-          <h4>Rubric breakdown</h4>
-          ${rubricHtml}
-        </div>
+    <div class="fb-section stats">
+      <h4>Statistics</h4>
+      <div class="stat-row">${statsHtml}</div>
+    </div>
 
-        <div class="fb-section stats">
-          <h4>Statistics</h4>
-          <div class="stat-row">${statsHtml}</div>
-        </div>
+    <div class="fb-section checklist">
+      <h4>Handbook checklist</h4>
+      <div class="check-grid">${checklistHtml}</div>
+    </div>
 
-        <div class="fb-section checklist">
-          <h4>Handbook checklist</h4>
-          <div class="check-grid">${checklistHtml}</div>
-        </div>
+    ${fb.examiner_comment ? `
+    <div class="fb-section examiner">
+      <h4>Examiner's comment</h4>
+      <p class="examiner-text">${escapeHtml(fb.examiner_comment)}</p>
+    </div>` : ''}
 
-        ${fb.examiner_comment ? `
-        <div class="fb-section examiner">
-          <h4>Examiner's comment</h4>
-          <p class="examiner-text">${escapeHtml(fb.examiner_comment)}</p>
-        </div>` : ''}
+    ${(fb.format_notes || []).length ? `
+    <div class="fb-section format-notes">
+      <h4>Format note</h4>
+      <ul>${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+    </div>` : ''}
 
-        ${(fb.format_notes || []).length ? `
-        <div class="fb-section format-notes">
-          <h4>Format note</h4>
-          <ul>${fb.format_notes.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
-        </div>` : ''}
+    <div class="fb-section strengths">
+      <h4>What's good</h4>
+      <ul>${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+    </div>
 
-        <div class="fb-section strengths">
-          <h4>What's good</h4>
-          <ul>${(fb.strengths || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-        </div>
+    <div class="fb-section mistakes">
+      <h4>Grammar analysis</h4>
+      ${mistakesHtml}
+    </div>
 
-        <div class="fb-section mistakes">
-          <h4>Grammar analysis</h4>
-          ${mistakesHtml}
-        </div>
+    <div class="fb-section improvements">
+      <h4>Needs improvement</h4>
+      <ul>${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
+    </div>
 
-        <div class="fb-section improvements">
-          <h4>Needs improvement</h4>
-          <ul>${(fb.improvements || []).map(s => `<li>${escapeHtml(s)}</li>`).join('') || '<li>—</li>'}</ul>
-        </div>
-
-        ${words ? `<div class="fb-section words"><h4>Advanced words used</h4>${words}</div>` : ''}
-      </div>
-    </details>
-
+    ${words ? `<div class="fb-section words"><h4>Advanced words used</h4>${words}</div>` : ''}
     ${showAdminDelete ? `<button class="admin-delete-btn">Delete this essay</button>` : ''}
   `;
 }

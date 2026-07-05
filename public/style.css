@@ -151,6 +151,18 @@ button {
 }
 #save-question-btn, #submit-essay-btn { width: auto; padding: 10px 20px; }
 
+#update-question-btn {
+  width: auto;
+  padding: 10px 20px;
+  background: var(--green-ok);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 14px;
+}
+#update-question-btn:hover { opacity: 0.9; }
+
 #login-form button[type=submit]:hover,
 #save-question-btn:hover,
 #submit-essay-btn:hover { background: var(--red-pen); }
@@ -532,6 +544,28 @@ textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
   flex: 1;
   min-width: 200px;
 }
+
+.delete-day-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.day-details > summary {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 10px 0;
+  list-style: none;
+}
+.day-details > summary::-webkit-details-marker { display: none; }
+.day-details > summary::before { content: '▸ '; }
+.day-details[open] > summary::before { content: '▾ '; }
+.day-details > summary:hover { color: var(--red-pen); }
 
 .no-archive {
   color: var(--ink-soft);

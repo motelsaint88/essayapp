@@ -66,6 +66,7 @@
         <div id="question-form" class="question-form" style="display:none;">
           <textarea id="question-input" placeholder="Paste or type today's essay question here..."></textarea>
           <div class="form-actions">
+            <button id="update-question-btn" style="display:none;">Save edit (same question)</button>
             <button id="save-question-btn">Save question for everyone</button>
             <button id="cancel-question-btn" class="ghost-btn">Cancel</button>
           </div>
@@ -85,13 +86,13 @@
 
     <!-- MARKED SCRIPTS TAB (saved essays, today + yesterday) -->
     <section id="tab-board" class="tab-panel">
-      <p class="eyebrow">Every submitted essay, with the AI's marking — kept for today and yesterday</p>
+      <p class="eyebrow">Every submitted essay, with the AI's marking — kept forever, browse any past day below</p>
       <div id="archive-container"></div>
     </section>
 
     <!-- OVERALL TAB -->
     <section id="tab-overall" class="tab-panel">
-      <p class="eyebrow">Running average across every essay</p>
+      <p class="eyebrow">Ranked by total score across every essay — rewards showing up, not just one good day</p>
       <table class="overall-table">
         <thead><tr><th>Rank</th><th>Name</th><th>Essays</th><th>Total</th><th>Average /40</th></tr></thead>
         <tbody id="overall-body"></tbody>
