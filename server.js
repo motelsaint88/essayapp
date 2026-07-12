@@ -186,12 +186,14 @@ app.delete('/api/essay/:questionId/:username', requireAdmin, h(async (req, res) 
   const { questionId, username } = req.params;
   const info = await run('DELETE FROM essays WHERE question_id = ? AND username = ?', [questionId, username]);
   if (info.changes === 0) return res.status(404).json({ error: 'No essay found to delete' });
+  await run('DELETE FROM score_history WHERE question_id = ? AND username = ?', [questionId, username]);
   res.json({ ok: true });
 }));
 
 app.delete('/api/question/:questionId', requireAdmin, h(async (req, res) => {
   const { questionId } = req.params;
   await run('DELETE FROM essays WHERE question_id = ?', [questionId]);
+  await run('DELETE FROM score_history WHERE question_id = ?', [questionId]);
   const info = await run('DELETE FROM questions WHERE id = ?', [questionId]);
   if (info.changes === 0) return res.status(404).json({ error: 'Question not found' });
   res.json({ ok: true });
